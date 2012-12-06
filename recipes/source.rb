@@ -19,15 +19,44 @@
 
 include_recipe "build-essential"
 
-bash "install_daemontools" do
-  user "root"
-  cwd "/tmp"
-  code <<-EOH
-    (cd /tmp; wget http://cr.yp.to/daemontools/daemontools-0.76.tar.gz)
-    (cd /tmp; tar zxvf daemontools-0.76.tar.gz)
-    (cd /tmp/admin/daemontools-0.76; perl -pi -e 's/extern int errno;/\#include <errno.h>/' src/error.h)
-    (cd /tmp/admin/daemontools-0.76; package/compile)
-    (cd /tmp/admin/daemontools-0.76; mv command/* #{node['daemontools']['bin_dir']})
+#
+# Skip if installed
+#
+unless ::File.exists?("#{node['daemontools']['bin_dir']}/svscan")
+
+  remote_file "/tmp/daemontools-0.76.tar.gz" do
+    source "http://cr.yp.to/daemontools/daemontools-0.76.tar.gz"
+    owner "root"
+    mode "0644"
+  end
+
+  bash "Compile daemontools" do
+    user "root"
+    cwd "/tmp"
+    code <<-EOH
+      tar zxvf daemontools-0.76.tar.gz
+      cd admin/daemontools-0.76
+      perl -pi -e 's/extern int errno;/\#include <errno.h>/' src/error.h
+      package/compile
     EOH
-  not_if {::File.exists?("#{node['daemontools']['bin_dir']}/svscan")}
+  end
+
+  template "/tmp/admin/daemontools-0.76/package/upgrade" do
+    source "package/upgrade.erb"
+    mode "0755"
+  end
+  template "/tmp/admin/daemontools-0.76/package/run" do
+    source "package/run.erb"
+    mode "0755"
+  end
+
+  bash "Install daemontools" do
+    user "root"
+    cwd "/tmp/admin/daemontools-0.76"
+    code <<-EOH
+      package/upgrade
+      package/run
+    EOH
+  end
+
 end
