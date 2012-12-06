@@ -129,7 +129,7 @@ end
 
 action :stop do
   if @svc.running
-    execute "svc -p #{node['daemontools']['service_dir']}/#{new_resource.service_name}"
+    execute "svc -d #{node['daemontools']['service_dir']}/#{new_resource.service_name}"
     new_resource.updated_by_last_action(true)
   end
 end
